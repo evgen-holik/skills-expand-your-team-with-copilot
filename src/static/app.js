@@ -470,6 +470,80 @@ document.addEventListener("DOMContentLoaded", () => {
     Object.entries(filteredActivities).forEach(([name, details]) => {
       renderActivityCard(name, details);
     });
+
+    // Scroll to and highlight a shared activity from URL parameter
+    const urlParams = new URLSearchParams(window.location.search);
+    const sharedActivity = urlParams.get("activity");
+    if (sharedActivity) {
+      const cards = activitiesList.querySelectorAll(".activity-card");
+      cards.forEach((card) => {
+        const title = card.querySelector("h4");
+        if (title && title.textContent.trim() === sharedActivity) {
+          card.scrollIntoView({ behavior: "smooth", block: "center" });
+          card.classList.add("highlighted");
+          setTimeout(() => card.classList.remove("highlighted"), 3000);
+        }
+      });
+    }
+  }
+
+  // Function to share an activity via social platforms or clipboard
+  function shareActivity(name, details, shareType) {
+    const shareUrl = `${window.location.origin}${window.location.pathname}?activity=${encodeURIComponent(name)}`;
+    const shareText = `Check out ${name} at Mergington High School! ${details.description} Schedule: ${formatSchedule(details)}`;
+
+    switch (shareType) {
+      case "twitter":
+        window.open(
+          `https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}&url=${encodeURIComponent(shareUrl)}`,
+          "_blank",
+          "noopener,noreferrer"
+        );
+        break;
+      case "facebook":
+        window.open(
+          `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}`,
+          "_blank",
+          "noopener,noreferrer"
+        );
+        break;
+      case "whatsapp":
+        window.open(
+          `https://wa.me/?text=${encodeURIComponent(shareText + " " + shareUrl)}`,
+          "_blank",
+          "noopener,noreferrer"
+        );
+        break;
+      case "copy":
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(shareUrl).then(() => {
+            showMessage("Link copied to clipboard!", "success");
+          }).catch(() => {
+            fallbackCopyToClipboard(shareUrl);
+          });
+        } else {
+          fallbackCopyToClipboard(shareUrl);
+        }
+        break;
+    }
+  }
+
+  // Fallback clipboard copy for non-HTTPS or unsupported environments
+  function fallbackCopyToClipboard(text) {
+    const textArea = document.createElement("textarea");
+    textArea.value = text;
+    textArea.style.position = "fixed";
+    textArea.style.opacity = "0";
+    document.body.appendChild(textArea);
+    textArea.focus();
+    textArea.select();
+    try {
+      document.execCommand("copy");
+      showMessage("Link copied to clipboard!", "success");
+    } catch (err) {
+      showMessage("Failed to copy link.", "error");
+    }
+    document.body.removeChild(textArea);
   }
 
   // Function to render a single activity card
@@ -569,6 +643,13 @@ document.addEventListener("DOMContentLoaded", () => {
         `
         }
       </div>
+      <div class="share-buttons">
+        <span class="share-label">Share:</span>
+        <button class="share-button share-twitter" title="Share on Twitter/X" aria-label="Share on Twitter/X">X</button>
+        <button class="share-button share-facebook" title="Share on Facebook" aria-label="Share on Facebook">f</button>
+        <button class="share-button share-whatsapp" title="Share on WhatsApp" aria-label="Share on WhatsApp">💬</button>
+        <button class="share-button share-copy" title="Copy link" aria-label="Copy link">🔗</button>
+      </div>
     `;
 
     // Add click handlers for delete buttons
@@ -586,6 +667,12 @@ document.addEventListener("DOMContentLoaded", () => {
         });
       }
     }
+
+    // Add click handlers for share buttons
+    activityCard.querySelector(".share-twitter").addEventListener("click", () => shareActivity(name, details, "twitter"));
+    activityCard.querySelector(".share-facebook").addEventListener("click", () => shareActivity(name, details, "facebook"));
+    activityCard.querySelector(".share-whatsapp").addEventListener("click", () => shareActivity(name, details, "whatsapp"));
+    activityCard.querySelector(".share-copy").addEventListener("click", () => shareActivity(name, details, "copy"));
 
     activitiesList.appendChild(activityCard);
   }
